@@ -23,10 +23,32 @@ const ai = new GoogleGenAI({
   },
 });
 
+// Only these MIME types are accepted for uploaded manuscript scans.
+const ALLOWED_IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+// Thin, credential-free surface for calling Gemini. Exported for tests to
+// mock — unlike `ai`, this object holds no apiKey or client internals.
+const geminiClient = {
+  generateContent: (args: Parameters<typeof ai.models.generateContent>[0]) =>
+    ai.models.generateContent(args),
+};
+
 // Paleography analysis API endpoint
 app.post("/api/paleography/analyze", async (req, res) => {
   try {
     const { imageBase64, mimeType, customPrompt } = req.body;
+
+    if (!imageBase64) {
+      return res.status(400).json({
+        error: "Debes subir una imagen del manuscrito antes de ejecutar el análisis.",
+      });
+    }
+
+    if (!mimeType || !ALLOWED_IMAGE_MIME_TYPES.has(mimeType)) {
+      return res.status(400).json({
+        error: "Formato de imagen no soportado. Usa JPEG, PNG o WebP.",
+      });
+    }
 
     if (!process.env.GEMINI_API_KEY) {
       return res.status(500).json({
@@ -62,28 +84,22 @@ Deberás devolver un objeto JSON válido con los siguientes campos:
 
 5. "lineByLine": Un array de objetos con cada línea transcrita { "lineNumber": number, "literal": string, "normalized": string, "notes": string } para facilitar la cotejación visual línea a línea.`;
 
-    let contentsPayload: any;
-
-    if (imageBase64) {
-      const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
-      contentsPayload = {
-        parts: [
-          {
-            inlineData: {
-              mimeType: mimeType || "image/jpeg",
-              data: cleanBase64,
-            },
+    const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+    const contentsPayload: any = {
+      parts: [
+        {
+          inlineData: {
+            mimeType,
+            data: cleanBase64,
           },
-          {
-            text: customPrompt || "Realiza el estudio paleográfico literal y la versión normalizada en español moderno de este manuscrito histórico de los siglos XV-XVIII.",
-          },
-        ],
-      };
-    } else {
-      contentsPayload = customPrompt || "Por favor analiza la transcripción y normalización del documento histórico presentado.";
-    }
+        },
+        {
+          text: customPrompt || "Realiza el estudio paleográfico literal y la versión normalizada en español moderno de este manuscrito histórico de los siglos XV-XVIII.",
+        },
+      ],
+    };
 
-    const response = await ai.models.generateContent({
+    const response = await geminiClient.generateContent({
       model: "gemini-3.6-flash",
       contents: contentsPayload,
       config: {
@@ -129,4 +145,10 @@ async function startServer() {
   });
 }
 
-startServer();
+// Skip auto-start when imported by the test suite, so tests can exercise
+// `app` on an ephemeral port without booting Vite middleware / port 3000.
+if (process.env.NODE_ENV !== "test") {
+  startServer();
+}
+
+export { app, geminiClient };

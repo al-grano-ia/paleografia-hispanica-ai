@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { ManuscriptDocument } from "../types";
 import { Sparkles, Loader2, Upload, FileCheck, HelpCircle, ArrowRight, RefreshCw } from "lucide-react";
 
+const ALLOWED_IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
 interface AiAnalysisModalProps {
   currentDocument: ManuscriptDocument;
   onAnalysisComplete: (newDoc: ManuscriptDocument) => void;
@@ -16,6 +18,7 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
     "Realiza el estudio paleográfico literal con abreviaturas entre corchetes [ ] y la versión normalizada en español moderno de este manuscrito."
   );
   const [uploadedImageBase64, setUploadedImageBase64] = useState<string | null>(null);
+  const [uploadedMimeType, setUploadedMimeType] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<any | null>(null);
 
@@ -23,14 +26,28 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (!ALLOWED_IMAGE_MIME_TYPES.includes(file.type)) {
+      setErrorMessage("Formato no soportado. Sube una imagen JPEG, PNG o WebP.");
+      setUploadedImageBase64(null);
+      setUploadedMimeType(null);
+      return;
+    }
+
+    setErrorMessage(null);
     const reader = new FileReader();
     reader.onloadend = () => {
       setUploadedImageBase64(reader.result as string);
+      setUploadedMimeType(file.type);
     };
     reader.readAsDataURL(file);
   };
 
   const handleRunAnalysis = async () => {
+    if (!uploadedImageBase64 || !uploadedMimeType) {
+      setErrorMessage("Debes subir una imagen del manuscrito (JPEG, PNG o WebP) antes de ejecutar el análisis.");
+      return;
+    }
+
     setLoading(true);
     setErrorMessage(null);
 
@@ -39,7 +56,8 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          imageBase64: uploadedImageBase64 || null,
+          imageBase64: uploadedImageBase64,
+          mimeType: uploadedMimeType,
           customPrompt,
         }),
       });
@@ -114,7 +132,7 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
           <div className="border-2 border-dashed border-amber-800/50 hover:border-amber-600 rounded-lg p-6 text-center bg-stone-900/50 transition-colors">
             <input
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp"
               onChange={handleFileUpload}
               className="hidden"
               id="file-upload-ai"
@@ -125,7 +143,7 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
                 Haz clic para subir un escaneo manuscrito (JPG, PNG, WebP)
               </p>
               <p className="text-[11px] text-stone-400">
-                O se usará el manuscrito actual ({currentDocument.archivalMetadata.signature})
+                Es obligatorio subir una imagen: el análisis no puede ejecutarse sin ella.
               </p>
             </label>
           </div>
@@ -159,8 +177,9 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
           {/* Action Button */}
           <button
             onClick={handleRunAnalysis}
-            disabled={loading}
-            className="w-full bg-gradient-to-r from-amber-800 to-amber-700 hover:from-amber-700 hover:to-amber-600 text-amber-100 font-medium py-3 rounded-lg shadow-lg border border-amber-600/50 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            disabled={loading || !uploadedImageBase64}
+            title={!uploadedImageBase64 ? "Sube una imagen del manuscrito para habilitar el análisis" : undefined}
+            className="w-full bg-gradient-to-r from-amber-800 to-amber-700 hover:from-amber-700 hover:to-amber-600 text-amber-100 font-medium py-3 rounded-lg shadow-lg border border-amber-600/50 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <>
