@@ -1,0 +1,6 @@
+{
+  "name": "Paleografía Hispánica - AGI y Simancas",
+  "description": "Estudio, transcripción paleográfica literal y versión normalizada de manuscritos históricos de los siglos XV a XVIII (Archivo General de Indias y Simancas).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
