@@ -4,6 +4,15 @@ import { Sparkles, Loader2, Upload, FileCheck, HelpCircle, ArrowRight, RefreshCw
 
 const ALLOWED_IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
+// Same ceiling the server enforces (MAX_IMAGE_BYTES in server.ts). Checking it
+// here too avoids uploading tens of megabytes only to be rejected afterwards.
+const ALLOWED_IMAGE_MAX_BYTES = 20 * 1024 * 1024; // 20 MB
+
+const MAX_SIZE_LABEL = `${Math.round(ALLOWED_IMAGE_MAX_BYTES / (1024 * 1024))} MB`;
+
+const formatMegabytes = (bytes: number) =>
+  `${(bytes / (1024 * 1024)).toFixed(1).replace(".", ",")} MB`;
+
 interface AiAnalysisModalProps {
   currentDocument: ManuscriptDocument;
   onAnalysisComplete: (newDoc: ManuscriptDocument) => void;
@@ -28,6 +37,16 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
 
     if (!ALLOWED_IMAGE_MIME_TYPES.includes(file.type)) {
       setErrorMessage("Formato no soportado. Sube una imagen JPEG, PNG o WebP.");
+      setUploadedImageBase64(null);
+      setUploadedMimeType(null);
+      return;
+    }
+
+    if (file.size > ALLOWED_IMAGE_MAX_BYTES) {
+      setErrorMessage(
+        `La imagen pesa ${formatMegabytes(file.size)} y supera el máximo de ${MAX_SIZE_LABEL}. ` +
+          "Reduce la resolución o vuelve a guardar el escaneo con mayor compresión."
+      );
       setUploadedImageBase64(null);
       setUploadedMimeType(null);
       return;
@@ -63,7 +82,13 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
       });
 
       if (!response.ok) {
-        throw new Error(`Error en servidor de análisis (${response.status})`);
+        // Surface the server's own message (e.g. the size limit) when it sends
+        // one; fall back to the status code if the body is not JSON.
+        const serverError = await response
+          .json()
+          .then((body) => body?.error)
+          .catch(() => null);
+        throw new Error(serverError || `Error en servidor de análisis (${response.status})`);
       }
 
       const data = await response.json();
@@ -140,7 +165,7 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
             <label htmlFor="file-upload-ai" className="cursor-pointer space-y-2 block">
               <Upload className="w-8 h-8 text-amber-400 mx-auto" />
               <p className="text-xs text-amber-200 font-medium">
-                Haz clic para subir un escaneo manuscrito (JPG, PNG, WebP)
+                Haz clic para subir un escaneo manuscrito (JPG, PNG, WebP · máx. {MAX_SIZE_LABEL})
               </p>
               <p className="text-[11px] text-stone-400">
                 Es obligatorio subir una imagen: el análisis no puede ejecutarse sin ella.

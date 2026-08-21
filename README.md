@@ -75,8 +75,8 @@ de Gemini**. El navegador nunca ve la credencial.
 
 | | |
 |---|---|
-| **Entrada (imágenes)** | JPEG, PNG, WebP — validado en cliente y servidor |
-| **Tamaño máximo de petición** | 50 MB (escaneos de alta resolución) |
+| **Entrada (imágenes)** | JPEG, PNG, WebP — formato y tamaño validados en cliente y servidor |
+| **Tamaño máximo por imagen** | 20 MB por escaneo |
 | **Salida** | Markdown (`.md`), texto plano (`.txt`), copia al portapapeles |
 
 PDF y TIFF **no** están soportados: conviértelos previamente a JPEG o PNG.

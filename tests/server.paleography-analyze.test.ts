@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
 
-const { app, geminiClient } = await import("../server.ts");
+const { app, geminiClient, MAX_IMAGE_BYTES } = await import("../server.ts");
 
 let server: Server;
 let baseUrl: string;
@@ -76,10 +76,29 @@ test("accepts image/jpeg, preserves the mimeType and strips only the data-URL pr
 
   const call = spy.mock.calls[0].arguments[0] as any;
   assert.equal(call.model, "gemini-3.6-flash");
-  assert.equal(call.config.temperature, 0.2);
   assert.equal(call.config.responseMimeType, "application/json");
   assert.equal(call.contents.parts[0].inlineData.mimeType, "image/jpeg");
   assert.equal(call.contents.parts[0].inlineData.data, "SGVsbG8=");
+});
+
+test("sends no sampling parameters: gemini-3.6-flash no longer accepts them", async (t) => {
+  const spy = t.mock.method(geminiClient, "generateContent", async () => ({
+    text: '{"literalTranscription":"stub"}',
+  }));
+
+  const res = await postAnalyze({
+    imageBase64: "data:image/jpeg;base64,SGVsbG8=",
+    mimeType: "image/jpeg",
+  });
+
+  assert.equal(res.status, 200);
+  const { config } = spy.mock.calls[0].arguments[0] as any;
+  for (const samplingParam of ["temperature", "topP", "topK", "top_p", "top_k"]) {
+    assert.ok(
+      !(samplingParam in config),
+      `config no debe incluir el parámetro de muestreo "${samplingParam}"`
+    );
+  }
 });
 
 test("accepts image/png and preserves it as image/png (no longer defaults to jpeg)", async (t) => {
@@ -96,6 +115,58 @@ test("accepts image/png and preserves it as image/png (no longer defaults to jpe
   const call = spy.mock.calls[0].arguments[0] as any;
   assert.equal(call.contents.parts[0].inlineData.mimeType, "image/png");
   assert.equal(call.contents.parts[0].inlineData.data, "SGVsbG8=");
+});
+
+// Builds a base64 payload that decodes to approximately `bytes` bytes.
+// 4 base64 chars carry 3 bytes, so the length is rounded up to a multiple of 4.
+function base64OfSize(bytes: number): string {
+  const chars = Math.ceil((bytes * 4) / 3 / 4) * 4;
+  return "A".repeat(chars);
+}
+
+test("rejects an image above the size limit with 413 and never calls Gemini", async (t) => {
+  const spy = t.mock.method(geminiClient, "generateContent");
+
+  const res = await postAnalyze({
+    imageBase64: `data:image/jpeg;base64,${base64OfSize(MAX_IMAGE_BYTES + 1024 * 1024)}`,
+    mimeType: "image/jpeg",
+  });
+  const data = await res.json();
+
+  assert.equal(res.status, 413);
+  assert.match(data.error, /demasiado grande/i);
+  assert.match(data.error, /20 MB/);
+  assert.equal(spy.mock.callCount(), 0);
+});
+
+test("accepts an image just under the size limit", async (t) => {
+  const spy = t.mock.method(geminiClient, "generateContent", async () => ({
+    text: '{"literalTranscription":"stub"}',
+  }));
+
+  const res = await postAnalyze({
+    imageBase64: base64OfSize(MAX_IMAGE_BYTES - 512 * 1024),
+    mimeType: "image/jpeg",
+  });
+
+  assert.equal(res.status, 200);
+  assert.equal(spy.mock.callCount(), 1);
+});
+
+test("answers with JSON, not an HTML error page, when the body exceeds the parser limit", async (t) => {
+  const spy = t.mock.method(geminiClient, "generateContent");
+
+  // Above express.json()'s 30mb ceiling, so the request never reaches the route.
+  const res = await postAnalyze({
+    imageBase64: base64OfSize(31 * 1024 * 1024),
+    mimeType: "image/jpeg",
+  });
+
+  assert.equal(res.status, 413);
+  assert.match(res.headers.get("content-type") ?? "", /application\/json/);
+  const data = await res.json();
+  assert.match(data.error, /demasiado grande/i);
+  assert.equal(spy.mock.callCount(), 0);
 });
 
 test("accepts image/webp and preserves it as image/webp", async (t) => {
