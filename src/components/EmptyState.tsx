@@ -1,6 +1,6 @@
 import React from "react";
 import { Upload, Search, HelpCircle, ScrollText } from "lucide-react";
-import { MAX_SIZE_LABEL } from "./AiAnalysisModal";
+import { MAX_SIZE_LABEL } from "../config/upload";
 
 interface EmptyStateProps {
   onOpenUpload: () => void;

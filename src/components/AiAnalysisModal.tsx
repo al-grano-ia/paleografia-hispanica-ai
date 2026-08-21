@@ -1,14 +1,11 @@
 import React, { useState } from "react";
 import { ManuscriptDocument } from "../types";
 import { Sparkles, Loader2, Upload, FileCheck, HelpCircle, ArrowRight, RefreshCw } from "lucide-react";
+// The server enforces the same ceiling; checking it here avoids uploading tens
+// of megabytes only to be rejected afterwards.
+import { MAX_IMAGE_BYTES, MAX_SIZE_LABEL } from "../config/upload";
 
 const ALLOWED_IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
-
-// Same ceiling the server enforces (MAX_IMAGE_BYTES in server.ts). Checking it
-// here too avoids uploading tens of megabytes only to be rejected afterwards.
-const ALLOWED_IMAGE_MAX_BYTES = 20 * 1024 * 1024; // 20 MB
-
-export const MAX_SIZE_LABEL = `${Math.round(ALLOWED_IMAGE_MAX_BYTES / (1024 * 1024))} MB`;
 
 const formatMegabytes = (bytes: number) =>
   `${(bytes / (1024 * 1024)).toFixed(1).replace(".", ",")} MB`;
@@ -45,7 +42,7 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ onAnalysisComp
       return;
     }
 
-    if (file.size > ALLOWED_IMAGE_MAX_BYTES) {
+    if (file.size > MAX_IMAGE_BYTES) {
       setErrorMessage(
         `La imagen pesa ${formatMegabytes(file.size)} y supera el máximo de ${MAX_SIZE_LABEL}. ` +
           "Reduce la resolución o vuelve a guardar el escaneo con mayor compresión."
@@ -100,12 +97,15 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ onAnalysisComp
       if (data.literalTranscription) {
         // Construct new document object
         const estimated = data.archivalMetadata;
+        // The title is as much a guess as the rest of the metadata, so it carries
+        // the same label wherever it is shown.
+        const estimatedTitle = asEstimate(estimated?.title) ?? "Manuscrito sin identificar";
         const newDoc: ManuscriptDocument = {
           id: "uploaded-" + Date.now(),
-          title: estimated?.title || "Manuscrito sin identificar",
+          title: estimatedTitle,
           imageUrl: uploadedImageBase64,
           archivalMetadata: {
-            title: estimated?.title || "Manuscrito sin identificar",
+            title: estimatedTitle,
             archive: asEstimate(estimated?.probableArchive) ?? "Archivo no determinado",
             section: "Transcripción generada por IA · sin cotejo archivístico",
             signature: "Sin signatura verificada",

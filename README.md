@@ -241,9 +241,9 @@ Distribuido bajo licencia **MIT**. Consulta el fichero [LICENSE](LICENSE) para e
 En resumen: puedes usar, copiar, modificar y redistribuir este código, incluso con fines
 comerciales, conservando el aviso de copyright. El software se entrega «tal cual», sin garantías.
 
-La licencia cubre **el código de este repositorio**. No alcanza a los manuscritos que analices con
-la aplicación, cuyos derechos corresponden a la institución que custodia y digitaliza cada
-documento.
+La licencia cubre únicamente el código de este repositorio. Cada manuscrito o reproducción puede
+estar sujeto a condiciones de uso y atribución propias, que la persona usuaria debe comprobar en la
+fuente correspondiente.
 
 ## Créditos
 

@@ -3,20 +3,16 @@ import path from "path";
 import dotenv from "dotenv";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
+import { MAX_IMAGE_BYTES, MAX_SIZE_LABEL } from "./src/config/upload.ts";
 
 dotenv.config();
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
-// Maximum size of an uploaded manuscript scan, measured on the decoded bytes
-// (i.e. the original file), not on its base64 representation.
-// Keep this value in sync with ALLOWED_IMAGE_MAX_BYTES in
-// src/components/AiAnalysisModal.tsx, which enforces the same limit up front.
-const MAX_IMAGE_BYTES = 20 * 1024 * 1024; // 20 MB
-
-// base64 inflates a payload by ~33%; the extra margin covers the JSON envelope
-// and the custom prompt. Requests above this never reach the route handler.
+// base64 inflates a payload by ~33%; the extra margin over MAX_IMAGE_BYTES
+// covers the JSON envelope and the custom prompt. Requests above this never
+// reach the route handler.
 const MAX_REQUEST_BODY = "30mb";
 
 app.use(express.json({ limit: MAX_REQUEST_BODY }));
@@ -27,9 +23,7 @@ app.use(express.urlencoded({ extended: true, limit: MAX_REQUEST_BODY }));
 app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
   if (err?.type === "entity.too.large") {
     return res.status(413).json({
-      error: `La imagen es demasiado grande. El tamaño máximo admitido es de ${formatMegabytes(
-        MAX_IMAGE_BYTES
-      )}. Reduce la resolución o vuelve a guardar el escaneo con mayor compresión.`,
+      error: `La imagen es demasiado grande. El tamaño máximo admitido es de ${MAX_SIZE_LABEL}. Reduce la resolución o vuelve a guardar el escaneo con mayor compresión.`,
     });
   }
   return next(err);
@@ -45,10 +39,6 @@ const ai = new GoogleGenAI({
 
 // Only these MIME types are accepted for uploaded manuscript scans.
 const ALLOWED_IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-
-function formatMegabytes(bytes: number): string {
-  return `${Math.round(bytes / (1024 * 1024))} MB`;
-}
 
 // Size of the decoded image, derived from the base64 string without allocating
 // a Buffer for it: every 4 base64 chars carry 3 bytes, minus the "=" padding.
@@ -129,9 +119,7 @@ app.post("/api/paleography/analyze", async (req, res) => {
     // without scanning tens of megabytes of text first.
     if (decodedByteLength(cleanBase64) > MAX_IMAGE_BYTES) {
       return res.status(413).json({
-        error: `La imagen es demasiado grande. El tamaño máximo admitido es de ${formatMegabytes(
-          MAX_IMAGE_BYTES
-        )}. Reduce la resolución o vuelve a guardar el escaneo con mayor compresión.`,
+        error: `La imagen es demasiado grande. El tamaño máximo admitido es de ${MAX_SIZE_LABEL}. Reduce la resolución o vuelve a guardar el escaneo con mayor compresión.`,
       });
     }
 
