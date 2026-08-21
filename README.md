@@ -203,11 +203,18 @@ npm test
 endpoint de análisis, pero pensado como demostración técnica y didáctica, no como producto de
 producción.
 
+**No se incluyen manuscritos de ejemplo.** Los dos que traía el prototipo original se retiraron:
+sus imágenes no tenían procedencia verificable y sus fichas archivísticas —signaturas, archivos,
+fechas— eran invención del propio modelo. Publicar atribuciones inventadas como si fueran datos
+archivísticos reales es justo lo contrario de lo que pretende esta herramienta. La aplicación
+arranca por tanto con el área de trabajo vacía, a la espera de un escaneo tuyo.
+
 Pendiente antes de un despliegue público:
 
-- Rate limiting y control de abuso en `/api/paleography/analyze` (hoy el endpoint es abierto).
+- Rate limiting y control de abuso en `/api/paleography/analyze` (hoy el endpoint es abierto), más
+  un límite de gasto sobre la clave de Gemini.
 - Persistencia: el trabajo vive en memoria del navegador y se pierde al recargar.
-- Sustituir las imágenes de demostración por escaneos con procedencia y licencia verificadas.
+- Añadir manuscritos de ejemplo con procedencia, licencia y atribución comprobadas.
 
 ---
 
@@ -229,9 +236,14 @@ Pendiente antes de un despliegue público:
 
 ## Licencia
 
-Este repositorio **aún no tiene licencia asignada**. Mientras no se añada un fichero `LICENSE`, se
-aplican por defecto los derechos de autor reservados: el código puede consultarse, pero no existe
-concesión de uso, modificación ni redistribución.
+Distribuido bajo licencia **MIT**. Consulta el fichero [LICENSE](LICENSE) para el texto completo.
+
+En resumen: puedes usar, copiar, modificar y redistribuir este código, incluso con fines
+comerciales, conservando el aviso de copyright. El software se entrega «tal cual», sin garantías.
+
+La licencia cubre únicamente el código de este repositorio. Cada manuscrito o reproducción puede
+estar sujeto a condiciones de uso y atribución propias, que la persona usuaria debe comprobar en la
+fuente correspondiente.
 
 ## Créditos
 

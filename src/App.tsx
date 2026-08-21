@@ -8,10 +8,15 @@ import { PaleographicDictionary } from "./components/PaleographicDictionary";
 import { AiAnalysisModal } from "./components/AiAnalysisModal";
 import { ArchivalGuideModal } from "./components/ArchivalGuideModal";
 import { ExportModal } from "./components/ExportModal";
+import { EmptyState } from "./components/EmptyState";
 
 export default function App() {
   const [documentsList, setDocumentsList] = useState<ManuscriptDocument[]>(SAMPLE_MANUSCRIPTS);
-  const [currentDocument, setCurrentDocument] = useState<ManuscriptDocument>(SAMPLE_MANUSCRIPTS[0]);
+  // No document is bundled with the app, so the workspace starts empty and only
+  // fills up once the user analyses a scan of their own.
+  const [currentDocument, setCurrentDocument] = useState<ManuscriptDocument | null>(
+    SAMPLE_MANUSCRIPTS[0] ?? null
+  );
   const [selectedLineNumber, setSelectedLineNumber] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<"transcription" | "dictionary" | "ai" | "guide">("transcription");
   const [showExportModal, setShowExportModal] = useState(false);
@@ -21,6 +26,8 @@ export default function App() {
     newNormalized: string,
     newLines: LineItem[]
   ) => {
+    if (!currentDocument) return;
+
     const updatedDoc: ManuscriptDocument = {
       ...currentDocument,
       literalTranscription: newLiteral,
@@ -37,12 +44,13 @@ export default function App() {
   const handleAnalysisComplete = (newDoc: ManuscriptDocument) => {
     setDocumentsList((prev) => [newDoc, ...prev]);
     setCurrentDocument(newDoc);
+    setSelectedLineNumber(null);
     setActiveTab("transcription");
   };
 
   return (
     <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col font-serif selection:bg-amber-900 selection:text-amber-100">
-      
+
       {/* App Navigation Header */}
       <Header
         currentDocument={currentDocument}
@@ -59,32 +67,44 @@ export default function App() {
 
       {/* Main Workspace Area */}
       <main className="flex-1 p-3 sm:p-5 max-w-[1700px] w-full mx-auto">
-        
+
+        {/* Tab: Transcription workspace, or the empty state until there is a document */}
         {activeTab === "transcription" && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 h-full min-h-[700px]">
-            
-            {/* Left Column: Interactive Manuscript Scan Viewer (6 cols) */}
-            <div className="lg:col-span-6 flex flex-col h-full">
-              <DocumentViewer
-                imageUrl={currentDocument.imageUrl}
-                title={currentDocument.archivalMetadata.title}
-                signature={currentDocument.archivalMetadata.signature}
-                selectedLineNumber={selectedLineNumber}
-                onSelectLine={(num) => setSelectedLineNumber(num)}
-              />
-            </div>
+          currentDocument ? (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 h-full min-h-[700px]">
 
-            {/* Right Column: Transcription & Normalization Panel (6 cols) */}
-            <div className="lg:col-span-6 flex flex-col h-full">
-              <TranscriptionPanel
-                document={currentDocument}
-                selectedLineNumber={selectedLineNumber}
-                onSelectLine={(num) => setSelectedLineNumber(num)}
-                onUpdateTranscription={handleUpdateTranscription}
-              />
-            </div>
+              {/* Left Column: Interactive Manuscript Scan Viewer (6 cols) */}
+              <div className="lg:col-span-6 flex flex-col h-full">
+                <DocumentViewer
+                  imageUrl={currentDocument.imageUrl}
+                  title={currentDocument.archivalMetadata.title}
+                  signature={currentDocument.archivalMetadata.signature}
+                  selectedLineNumber={selectedLineNumber}
+                  onSelectLine={(num) => setSelectedLineNumber(num)}
+                />
+              </div>
 
-          </div>
+              {/* Right Column: Transcription & Normalization Panel (6 cols) */}
+              {/* `key` remounts the panel when the document changes, so its editable
+                  text is re-seeded instead of keeping the previous document's. */}
+              <div className="lg:col-span-6 flex flex-col h-full">
+                <TranscriptionPanel
+                  key={currentDocument.id}
+                  document={currentDocument}
+                  selectedLineNumber={selectedLineNumber}
+                  onSelectLine={(num) => setSelectedLineNumber(num)}
+                  onUpdateTranscription={handleUpdateTranscription}
+                />
+              </div>
+
+            </div>
+          ) : (
+            <EmptyState
+              onOpenUpload={() => setActiveTab("ai")}
+              onOpenDictionary={() => setActiveTab("dictionary")}
+              onOpenGuide={() => setActiveTab("guide")}
+            />
+          )
         )}
 
         {/* Tab: Paleographic Dictionary */}
@@ -97,10 +117,7 @@ export default function App() {
         {/* Tab: Gemini AI Paleographer */}
         {activeTab === "ai" && (
           <div className="max-w-6xl mx-auto">
-            <AiAnalysisModal
-              currentDocument={currentDocument}
-              onAnalysisComplete={handleAnalysisComplete}
-            />
+            <AiAnalysisModal onAnalysisComplete={handleAnalysisComplete} />
           </div>
         )}
 
@@ -114,7 +131,7 @@ export default function App() {
       </main>
 
       {/* Export Modal */}
-      {showExportModal && (
+      {showExportModal && currentDocument && (
         <ExportModal
           document={currentDocument}
           onClose={() => setShowExportModal(false)}
