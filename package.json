@@ -1,5 +1,6 @@
 {
-  "name": "react-example",
+  "name": "paleografia-hispanica-ai",
+  "description": "Asistente de transcripción paleográfica asistida por IA multimodal para manuscritos hispánicos de los siglos XV-XVIII.",
   "private": true,
   "version": "0.0.0",
   "type": "module",

@@ -1,10 +1,17 @@
 import { ManuscriptDocument } from "../types";
 
+// PENDIENTE (procedencia de las imágenes de demostración):
+// Ambas `imageUrl` proceden del prototipo original y su procedencia NO está
+// verificada. La primera devuelve 404 en Wikimedia Commons; la segunda es una
+// fotografía de stock de Unsplash que no corresponde al documento descrito.
+// Antes de usar esto como demostración pública, sustitúyelas por escaneos con
+// origen, licencia y atribución comprobados.
+
 export const SAMPLE_MANUSCRIPTS: ManuscriptDocument[] = [
   {
     id: "agi-santo-domingo-1597",
     title: "AGI, Santo Domingo, Leg. 868 - Real Cédula de Pobladores (1597-1608)",
-    imageUrl: "https://upload.wikimedia.org/wikipedia/commons/e/e0/Manuscrito_Paleografico_AGI_Santo_Domingo_1597.jpg", // We also keep a fallback and local preview
+    imageUrl: "https://upload.wikimedia.org/wikipedia/commons/e/e0/Manuscrito_Paleografico_AGI_Santo_Domingo_1597.jpg", // 404: pendiente de sustituir
     archivalMetadata: {
       title: "Real Cédula para la repoblación de la Isla Española (Santo Domingo)",
       archive: "Archivo General de Indias (AGI), Sevilla",

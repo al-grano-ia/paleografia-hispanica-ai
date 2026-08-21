@@ -13,14 +13,12 @@ const PORT = 3000;
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-// Initialize Gemini Client
+const isProduction = process.env.NODE_ENV === "production";
+
+// Initialize Gemini Client. The API key is read here only, server-side; it is
+// never sent to the browser nor exposed through a VITE_* variable.
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
-  httpOptions: {
-    headers: {
-      "User-Agent": "aistudio-build",
-    },
-  },
 });
 
 // Only these MIME types are accepted for uploaded manuscript scans.
@@ -51,8 +49,11 @@ app.post("/api/paleography/analyze", async (req, res) => {
     }
 
     if (!process.env.GEMINI_API_KEY) {
+      console.error("GEMINI_API_KEY environment variable is not configured.");
       return res.status(500).json({
-        error: "GEMINI_API_KEY environment variable is not configured.",
+        error: isProduction
+          ? "El servicio de análisis no está disponible en este momento."
+          : "GEMINI_API_KEY environment variable is not configured.",
       });
     }
 
@@ -119,8 +120,14 @@ Deberás devolver un objeto JSON válido con los siguientes campos:
 
     return res.json(parsedData);
   } catch (err: any) {
+    // Full details stay in the server log. The browser only gets a generic
+    // message in production, so upstream errors never leak provider internals.
     console.error("Error in paleography analysis API:", err);
-    return res.status(500).json({ error: err.message || "Internal server error during paleography analysis." });
+    return res.status(500).json({
+      error: isProduction
+        ? "No se ha podido completar el análisis paleográfico. Inténtalo de nuevo más tarde."
+        : err?.message || "Internal server error during paleography analysis.",
+    });
   }
 });
 
