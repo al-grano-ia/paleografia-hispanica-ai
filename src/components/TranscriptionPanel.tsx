@@ -21,6 +21,25 @@ interface TranscriptionPanelProps {
   onUpdateTranscription: (newLiteral: string, newNormalized: string, newLines: LineItem[]) => void;
 }
 
+// Shared by the four inner tabs. Same responsive treatment as the header's
+// navTabClasses (Header.tsx): tighter padding and smaller text below `sm`, and
+// the same explicit focus ring, since the default is barely visible on this
+// dark palette.
+const panelTabClasses = (isActive: boolean) =>
+  [
+    "flex items-center justify-center sm:justify-start gap-1.5",
+    // nowrap only on phones, where the short labels always fit on one line;
+    // from `sm` the full labels must stay free to wrap inside the button (as
+    // they did originally), or the row overflows the card between 640 and
+    // ~830px — this card clips with overflow-hidden instead of scrolling.
+    "px-2 py-2 sm:px-3 sm:py-1.5 text-xs font-serif whitespace-nowrap sm:whitespace-normal",
+    "rounded-md transition-colors cursor-pointer",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500",
+    isActive
+      ? "bg-amber-800 text-amber-100 font-semibold border border-amber-600/50 shadow-sm"
+      : "text-amber-300/80 hover:bg-stone-700 hover:text-amber-100",
+  ].join(" ");
+
 export const TranscriptionPanel: React.FC<TranscriptionPanelProps> = ({
   document,
   selectedLineNumber,
@@ -111,60 +130,41 @@ export const TranscriptionPanel: React.FC<TranscriptionPanelProps> = ({
   return (
     <div className="bg-stone-900 border border-amber-900/40 rounded-xl overflow-hidden shadow-2xl flex flex-col h-full min-h-[550px]">
       
-      {/* Header Tabs */}
-      <div className="bg-stone-800/90 px-4 py-2 border-b border-amber-900/30 flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center space-x-1">
-          <button
-            onClick={() => setActiveTab("literal")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-serif transition-colors cursor-pointer ${
-              activeTab === "literal"
-                ? "bg-amber-800 text-amber-100 font-semibold border border-amber-600/50 shadow-sm"
-                : "text-amber-300/80 hover:bg-stone-700 hover:text-amber-100"
-            }`}
-          >
-            <FileText className="w-3.5 h-3.5 text-amber-300" />
-            <span>1. Transcripción Literal</span>
+      {/* Header Tabs.
+          Below `sm` the four tabs sit in a 2x2 grid with short labels — in one
+          non-wrapping row they needed ~469px and were clipped by this card's
+          overflow-hidden. The action controls (Editar/Guardar, Copiar) drop to
+          their own row underneath. From `sm` up both the tab row and the
+          controls return to their original inline layout. */}
+      <div className="bg-stone-800/90 px-4 py-2 border-b border-amber-900/30 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:flex-wrap">
+        <div className="grid grid-cols-2 gap-1 sm:flex sm:items-center sm:space-x-1">
+          <button onClick={() => setActiveTab("literal")} className={panelTabClasses(activeTab === "literal")}>
+            <FileText className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+            <span className="sm:hidden">Literal</span>
+            <span className="hidden sm:inline">1. Transcripción Literal</span>
           </button>
 
-          <button
-            onClick={() => setActiveTab("normalized")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-serif transition-colors cursor-pointer ${
-              activeTab === "normalized"
-                ? "bg-amber-800 text-amber-100 font-semibold border border-amber-600/50 shadow-sm"
-                : "text-amber-300/80 hover:bg-stone-700 hover:text-amber-100"
-            }`}
-          >
-            <BookOpen className="w-3.5 h-3.5 text-amber-300" />
-            <span>2. Versión Normalizada</span>
+          <button onClick={() => setActiveTab("normalized")} className={panelTabClasses(activeTab === "normalized")}>
+            <BookOpen className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+            <span className="sm:hidden">Normalizada</span>
+            <span className="hidden sm:inline">2. Versión Normalizada</span>
           </button>
 
-          <button
-            onClick={() => setActiveTab("linebyline")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-serif transition-colors cursor-pointer ${
-              activeTab === "linebyline"
-                ? "bg-amber-800 text-amber-100 font-semibold border border-amber-600/50 shadow-sm"
-                : "text-amber-300/80 hover:bg-stone-700 hover:text-amber-100"
-            }`}
-          >
-            <ListOrdered className="w-3.5 h-3.5 text-amber-300" />
-            <span>Cotejo Línea por Línea</span>
+          <button onClick={() => setActiveTab("linebyline")} className={panelTabClasses(activeTab === "linebyline")}>
+            <ListOrdered className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+            <span className="sm:hidden">Cotejo</span>
+            <span className="hidden sm:inline">Cotejo Línea por Línea</span>
           </button>
 
-          <button
-            onClick={() => setActiveTab("metadata")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-serif transition-colors cursor-pointer ${
-              activeTab === "metadata"
-                ? "bg-amber-800 text-amber-100 font-semibold border border-amber-600/50 shadow-sm"
-                : "text-amber-300/80 hover:bg-stone-700 hover:text-amber-100"
-            }`}
-          >
-            <Info className="w-3.5 h-3.5 text-amber-300" />
-            <span>Ficha Archivística</span>
+          <button onClick={() => setActiveTab("metadata")} className={panelTabClasses(activeTab === "metadata")}>
+            <Info className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+            <span className="sm:hidden">Ficha</span>
+            <span className="hidden sm:inline">Ficha Archivística</span>
           </button>
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {isEditing ? (
             <button
               onClick={handleSaveEdits}
