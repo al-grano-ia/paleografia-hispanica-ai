@@ -12,6 +12,24 @@ interface HeaderProps {
   onOpenExport: () => void;
 }
 
+// Shared by the four navigation tabs. Tighter padding and a smaller type size
+// on phones keep each label on one line inside a 2-column grid at 320px; from
+// `sm` the original spacing returns. The focus ring is explicit because the
+// browser default is barely visible against this dark palette.
+const navTabClasses = (isActive: boolean) =>
+  [
+    "flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2",
+    // nowrap only on phones, where the short labels always fit: from `sm` the
+    // full labels must be free to wrap inside the button, as they do today,
+    // instead of pushing the row past the edge of the header.
+    "px-2 py-2 sm:px-3 sm:py-1.5 text-xs sm:text-sm whitespace-nowrap sm:whitespace-normal",
+    "rounded-md transition-all cursor-pointer",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500",
+    isActive
+      ? "bg-amber-800 text-amber-100 font-semibold shadow-inner border border-amber-600/50"
+      : "text-amber-300/80 hover:bg-stone-800 hover:text-amber-100",
+  ].join(" ");
+
 export const Header: React.FC<HeaderProps> = ({
   currentDocument,
   documentsList,
@@ -94,54 +112,45 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Navigation Tabs */}
-        <nav className="flex space-x-1 mt-3 border-t border-amber-900/30 pt-2 font-serif text-sm">
+        {/* Navigation Tabs.
+            Below `sm` the four tabs sit in a 2x2 grid with short labels: in one
+            row they need ~507px and spill off a phone screen. From `sm` up the
+            original horizontal row and the full labels come back. */}
+        <nav className="grid grid-cols-2 gap-1 sm:flex mt-3 border-t border-amber-900/30 pt-2 font-serif">
           <button
             onClick={() => setActiveTab("transcription")}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition-all cursor-pointer ${
-              activeTab === "transcription"
-                ? "bg-amber-800 text-amber-100 font-semibold shadow-inner border border-amber-600/50"
-                : "text-amber-300/80 hover:bg-stone-800 hover:text-amber-100"
-            }`}
+            className={navTabClasses(activeTab === "transcription")}
           >
-            <FileText className="w-4 h-4 text-amber-300" />
-            <span>Transcripción y Estudio</span>
+            <FileText className="w-4 h-4 text-amber-300 shrink-0" />
+            <span className="sm:hidden">Transcripción</span>
+            <span className="hidden sm:inline">Transcripción y Estudio</span>
           </button>
 
           <button
             onClick={() => setActiveTab("dictionary")}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition-all cursor-pointer ${
-              activeTab === "dictionary"
-                ? "bg-amber-800 text-amber-100 font-semibold shadow-inner border border-amber-600/50"
-                : "text-amber-300/80 hover:bg-stone-800 hover:text-amber-100"
-            }`}
+            className={navTabClasses(activeTab === "dictionary")}
           >
-            <Search className="w-4 h-4 text-amber-300" />
-            <span>Diccionario Abreviaturas</span>
+            <Search className="w-4 h-4 text-amber-300 shrink-0" />
+            <span className="sm:hidden">Diccionario</span>
+            <span className="hidden sm:inline">Diccionario Abreviaturas</span>
           </button>
 
           <button
             onClick={() => setActiveTab("ai")}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition-all cursor-pointer ${
-              activeTab === "ai"
-                ? "bg-amber-800 text-amber-100 font-semibold shadow-inner border border-amber-600/50"
-                : "text-amber-300/80 hover:bg-stone-800 hover:text-amber-100"
-            }`}
+            className={navTabClasses(activeTab === "ai")}
           >
-            <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
-            <span>Asistente Paleógrafo Gemini AI</span>
+            <Sparkles className="w-4 h-4 text-amber-400 animate-pulse shrink-0" />
+            <span className="sm:hidden">Asistente IA</span>
+            <span className="hidden sm:inline">Asistente Paleógrafo Gemini AI</span>
           </button>
 
           <button
             onClick={() => setActiveTab("guide")}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition-all cursor-pointer ${
-              activeTab === "guide"
-                ? "bg-amber-800 text-amber-100 font-semibold shadow-inner border border-amber-600/50"
-                : "text-amber-300/80 hover:bg-stone-800 hover:text-amber-100"
-            }`}
+            className={navTabClasses(activeTab === "guide")}
           >
-            <HelpCircle className="w-4 h-4 text-amber-300" />
-            <span>Guía de Grafías & Archivos</span>
+            <HelpCircle className="w-4 h-4 text-amber-300 shrink-0" />
+            <span className="sm:hidden">Guía</span>
+            <span className="hidden sm:inline">Guía de Grafías & Archivos</span>
           </button>
         </nav>
       </div>
