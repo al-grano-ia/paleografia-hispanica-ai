@@ -8,20 +8,23 @@ const ALLOWED_IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
 // here too avoids uploading tens of megabytes only to be rejected afterwards.
 const ALLOWED_IMAGE_MAX_BYTES = 20 * 1024 * 1024; // 20 MB
 
-const MAX_SIZE_LABEL = `${Math.round(ALLOWED_IMAGE_MAX_BYTES / (1024 * 1024))} MB`;
+export const MAX_SIZE_LABEL = `${Math.round(ALLOWED_IMAGE_MAX_BYTES / (1024 * 1024))} MB`;
 
 const formatMegabytes = (bytes: number) =>
   `${(bytes / (1024 * 1024)).toFixed(1).replace(".", ",")} MB`;
 
+// Everything Gemini infers about a document — archive, period, script type,
+// historical context — is a guess about an unidentified scan. It is labelled as
+// such so it is never read as an archival fact, and when the model says nothing
+// the field stays explicitly undetermined instead of being filled with a
+// plausible-looking default.
+const asEstimate = (value?: string) => (value ? `${value} (estimación de IA)` : undefined);
+
 interface AiAnalysisModalProps {
-  currentDocument: ManuscriptDocument;
   onAnalysisComplete: (newDoc: ManuscriptDocument) => void;
 }
 
-export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
-  currentDocument,
-  onAnalysisComplete,
-}) => {
+export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({ onAnalysisComplete }) => {
   const [loading, setLoading] = useState(false);
   const [customPrompt, setCustomPrompt] = useState(
     "Realiza el estudio paleográfico literal con abreviaturas entre corchetes [ ] y la versión normalizada en español moderno de este manuscrito."
@@ -96,19 +99,22 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
 
       if (data.literalTranscription) {
         // Construct new document object
+        const estimated = data.archivalMetadata;
         const newDoc: ManuscriptDocument = {
           id: "uploaded-" + Date.now(),
-          title: data.archivalMetadata?.title || "Manuscrito Analizado por AI",
-          imageUrl: uploadedImageBase64 || currentDocument.imageUrl,
+          title: estimated?.title || "Manuscrito sin identificar",
+          imageUrl: uploadedImageBase64,
           archivalMetadata: {
-            title: data.archivalMetadata?.title || "Manuscrito Histórico Analizado",
-            archive: data.archivalMetadata?.probableArchive || "Archivo Hispánico (AGI / Simancas)",
-            section: "Transcripción Automatizada por Gemini AI",
-            signature: "Doc. N.º " + Math.floor(Math.random() * 1000),
-            date: data.archivalMetadata?.estimatedPeriod || "Siglos XVI-XVIII",
-            scriptType: data.archivalMetadata?.scriptType || "Procesal encadenada / Humanística",
-            reign: "Época Moderna",
-            summary: data.archivalMetadata?.historicalContext || "Análisis de manuscrito mediante inteligencia artificial paleográfica.",
+            title: estimated?.title || "Manuscrito sin identificar",
+            archive: asEstimate(estimated?.probableArchive) ?? "Archivo no determinado",
+            section: "Transcripción generada por IA · sin cotejo archivístico",
+            signature: "Sin signatura verificada",
+            date: asEstimate(estimated?.estimatedPeriod) ?? "Periodo no determinado",
+            scriptType: asEstimate(estimated?.scriptType) ?? "Tipología no determinada",
+            reign: "No determinado",
+            summary: estimated?.historicalContext
+              ? `Estimación de IA: ${estimated.historicalContext}`
+              : "Sin contexto histórico determinado.",
           },
           literalTranscription: data.literalTranscription,
           normalizedVersion: data.normalizedVersion || "",
@@ -237,10 +243,10 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
             <div className="space-y-4 text-xs font-serif overflow-auto max-h-[380px] pr-2">
               <div className="bg-stone-900 p-3 rounded border border-amber-800/40 space-y-1">
                 <span className="text-amber-400 font-mono font-bold text-[10px] uppercase">
-                  Script/Tipología Detectada:
+                  Tipología estimada por la IA:
                 </span>
                 <p className="text-amber-100 font-medium">
-                  {analysisResult.archivalMetadata?.scriptType || "Procesal encadenada / Humanística"}
+                  {analysisResult.archivalMetadata?.scriptType || "No determinada"}
                 </p>
               </div>
 

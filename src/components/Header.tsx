@@ -3,7 +3,7 @@ import { ManuscriptDocument } from "../types";
 import { BookOpen, FileText, Search, Sparkles, Upload, Download, ShieldCheck, HelpCircle } from "lucide-react";
 
 interface HeaderProps {
-  currentDocument: ManuscriptDocument;
+  currentDocument: ManuscriptDocument | null;
   documentsList: ManuscriptDocument[];
   onSelectDocument: (doc: ManuscriptDocument) => void;
   activeTab: "transcription" | "dictionary" | "ai" | "guide";
@@ -48,22 +48,26 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Document Switcher & Action Buttons */}
           <div className="flex flex-wrap items-center gap-2">
-            <div className="relative">
-              <select
-                className="bg-stone-800 text-amber-100 text-xs font-serif rounded-md border border-amber-800/50 px-3 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer max-w-[260px] truncate"
-                value={currentDocument.id}
-                onChange={(e) => {
-                  const doc = documentsList.find((d) => d.id === e.target.value);
-                  if (doc) onSelectDocument(doc);
-                }}
-              >
-                {documentsList.map((doc) => (
-                  <option key={doc.id} value={doc.id} className="bg-stone-900 text-amber-100">
-                    {doc.archivalMetadata.signature} - {doc.title.slice(0, 30)}...
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* Hidden until there is something to switch between: with no document
+                the select would render empty and have no valid value. */}
+            {currentDocument && (
+              <div className="relative">
+                <select
+                  className="bg-stone-800 text-amber-100 text-xs font-serif rounded-md border border-amber-800/50 px-3 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer max-w-[260px] truncate"
+                  value={currentDocument.id}
+                  onChange={(e) => {
+                    const doc = documentsList.find((d) => d.id === e.target.value);
+                    if (doc) onSelectDocument(doc);
+                  }}
+                >
+                  {documentsList.map((doc) => (
+                    <option key={doc.id} value={doc.id} className="bg-stone-900 text-amber-100">
+                      {doc.archivalMetadata.signature} - {doc.title.slice(0, 30)}...
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <button
               onClick={onOpenUpload}
@@ -76,8 +80,13 @@ export const Header: React.FC<HeaderProps> = ({
 
             <button
               onClick={onOpenExport}
-              className="flex items-center gap-1.5 bg-stone-800 hover:bg-stone-700 text-amber-200 text-xs font-medium px-3 py-2 rounded-md border border-stone-700 transition-colors shadow-sm cursor-pointer"
-              title="Exportar transcripción"
+              disabled={!currentDocument}
+              className="flex items-center gap-1.5 bg-stone-800 hover:bg-stone-700 text-amber-200 text-xs font-medium px-3 py-2 rounded-md border border-stone-700 transition-colors shadow-sm cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-stone-800"
+              title={
+                currentDocument
+                  ? "Exportar transcripción"
+                  : "Sube y analiza un manuscrito para poder exportarlo"
+              }
             >
               <Download className="w-3.5 h-3.5 text-amber-400" />
               <span>Exportar</span>
