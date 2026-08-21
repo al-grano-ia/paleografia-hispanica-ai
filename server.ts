@@ -87,7 +87,19 @@ app.post("/api/paleography/analyze", async (req, res) => {
       });
     }
 
-    if (!mimeType || !ALLOWED_IMAGE_MIME_TYPES.has(mimeType)) {
+    if (!mimeType || typeof mimeType !== "string") {
+      return res.status(400).json({
+        error: "Formato de imagen no soportado. Usa JPEG, PNG o WebP.",
+      });
+    }
+
+    // MIME types are case-insensitive, so "image/JPEG" and "image/jpeg" are the
+    // same format. Everything downstream — the allow-list, the comparison with
+    // the data URL and the payload sent to Gemini — uses this single normalized
+    // value, so no code path can disagree about what was uploaded.
+    const normalizedMimeType = mimeType.toLowerCase();
+
+    if (!ALLOWED_IMAGE_MIME_TYPES.has(normalizedMimeType)) {
       return res.status(400).json({
         error: "Formato de imagen no soportado. Usa JPEG, PNG o WebP.",
       });
@@ -101,7 +113,7 @@ app.post("/api/paleography/analyze", async (req, res) => {
     // A data URL carries its own MIME type. If it disagrees with the declared
     // `mimeType`, one of the two is wrong and Gemini would be told to decode the
     // bytes as something they are not.
-    if (dataUrlPrefix && dataUrlPrefix[1].toLowerCase() !== mimeType.toLowerCase()) {
+    if (dataUrlPrefix && dataUrlPrefix[1].toLowerCase() !== normalizedMimeType) {
       return res.status(400).json({
         error: "El tipo de imagen declarado no coincide con el contenido enviado. Vuelve a subir el escaneo.",
       });
@@ -170,7 +182,7 @@ Deberás devolver un objeto JSON válido con los siguientes campos:
       parts: [
         {
           inlineData: {
-            mimeType,
+            mimeType: normalizedMimeType,
             data: cleanBase64,
           },
         },

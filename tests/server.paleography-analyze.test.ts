@@ -156,6 +156,43 @@ test("sends no sampling parameters: gemini-3.6-flash no longer accepts them", as
   }
 });
 
+test("treats image/JPEG as image/jpeg and sends Gemini the normalized MIME type", async (t) => {
+  const VARIANTS = [
+    {
+      name: "uppercase in both mimeType and data URL",
+      imageBase64: "data:image/JPEG;base64,SGVsbG8=",
+      mimeType: "image/JPEG",
+    },
+    {
+      name: "uppercase mimeType against a lowercase data URL",
+      imageBase64: "data:image/jpeg;base64,SGVsbG8=",
+      mimeType: "image/JPEG",
+    },
+    {
+      name: "lowercase mimeType against an uppercase data URL",
+      imageBase64: "data:image/JPEG;base64,SGVsbG8=",
+      mimeType: "image/jpeg",
+    },
+  ];
+
+  for (const { name, imageBase64, mimeType } of VARIANTS) {
+    await t.test(name, async (st) => {
+      const spy = st.mock.method(geminiClient, "generateContent", async () => ({
+        text: '{"literalTranscription":"stub"}',
+      }));
+
+      const res = await postAnalyze({ imageBase64, mimeType });
+
+      assert.equal(res.status, 200);
+      assert.equal(spy.mock.callCount(), 1);
+
+      const call = spy.mock.calls[0].arguments[0] as any;
+      assert.equal(call.contents.parts[0].inlineData.mimeType, "image/jpeg");
+      assert.equal(call.contents.parts[0].inlineData.data, "SGVsbG8=");
+    });
+  }
+});
+
 test("accepts image/png and preserves it as image/png (no longer defaults to jpeg)", async (t) => {
   const spy = t.mock.method(geminiClient, "generateContent", async () => ({
     text: '{"literalTranscription":"stub"}',
