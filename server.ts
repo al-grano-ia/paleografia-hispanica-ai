@@ -57,6 +57,18 @@ function decodedByteLength(base64: string): number {
   return Math.floor((base64.length * 3) / 4) - padding;
 }
 
+// Leading "data:<mime>;base64," of a data URL, capturing the declared MIME type.
+const DATA_URL_PREFIX = /^data:([\w.+-]+\/[\w.+-]+);base64,/;
+
+// Standard base64: the alphabet plus at most two "=" of padding, and a length
+// that is a multiple of 4. FileReader.readAsDataURL() emits exactly this, with
+// no line breaks, so anything else is a malformed payload.
+const BASE64_PAYLOAD = /^[A-Za-z0-9+/]+={0,2}$/;
+
+function isValidBase64(payload: string): boolean {
+  return payload.length % 4 === 0 && BASE64_PAYLOAD.test(payload);
+}
+
 // Thin, credential-free surface for calling Gemini. Exported for tests to
 // mock — unlike `ai`, this object holds no apiKey or client internals.
 const geminiClient = {
@@ -81,13 +93,39 @@ app.post("/api/paleography/analyze", async (req, res) => {
       });
     }
 
-    const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+    const dataUrlPrefix = DATA_URL_PREFIX.exec(imageBase64);
+    const cleanBase64 = dataUrlPrefix
+      ? imageBase64.slice(dataUrlPrefix[0].length)
+      : imageBase64;
 
+    // A data URL carries its own MIME type. If it disagrees with the declared
+    // `mimeType`, one of the two is wrong and Gemini would be told to decode the
+    // bytes as something they are not.
+    if (dataUrlPrefix && dataUrlPrefix[1].toLowerCase() !== mimeType.toLowerCase()) {
+      return res.status(400).json({
+        error: "El tipo de imagen declarado no coincide con el contenido enviado. Vuelve a subir el escaneo.",
+      });
+    }
+
+    if (cleanBase64.length === 0) {
+      return res.status(400).json({
+        error: "La imagen recibida está vacía. Vuelve a subir el escaneo del manuscrito.",
+      });
+    }
+
+    // Checked before the base64 syntax so an oversized payload is rejected
+    // without scanning tens of megabytes of text first.
     if (decodedByteLength(cleanBase64) > MAX_IMAGE_BYTES) {
       return res.status(413).json({
         error: `La imagen es demasiado grande. El tamaño máximo admitido es de ${formatMegabytes(
           MAX_IMAGE_BYTES
         )}. Reduce la resolución o vuelve a guardar el escaneo con mayor compresión.`,
+      });
+    }
+
+    if (!isValidBase64(cleanBase64)) {
+      return res.status(400).json({
+        error: "El contenido de la imagen no es un Base64 válido. Vuelve a subir el escaneo del manuscrito.",
       });
     }
 

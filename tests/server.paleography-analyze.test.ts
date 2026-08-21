@@ -30,23 +30,77 @@ function postAnalyze(body: unknown) {
   });
 }
 
-const REJECTED_REQUESTS: Array<{ name: string; body: Record<string, unknown> }> = [
-  { name: "missing imageBase64", body: { customPrompt: "transcribe esto" } },
-  { name: "empty imageBase64", body: { imageBase64: "", mimeType: "image/jpeg" } },
-  { name: "image present but missing mimeType", body: { imageBase64: "data:image/jpeg;base64,SGVsbG8=" } },
-  { name: "empty mimeType", body: { imageBase64: "data:image/jpeg;base64,SGVsbG8=", mimeType: "" } },
+// `errorMatch` pins each case to the check that is meant to reject it, so a
+// request cannot pass the test by failing an earlier, unrelated validation.
+const REJECTED_REQUESTS: Array<{
+  name: string;
+  body: Record<string, unknown>;
+  errorMatch: RegExp;
+}> = [
+  {
+    name: "missing imageBase64",
+    body: { customPrompt: "transcribe esto" },
+    errorMatch: /debes subir una imagen/i,
+  },
+  {
+    name: "empty imageBase64",
+    body: { imageBase64: "", mimeType: "image/jpeg" },
+    errorMatch: /debes subir una imagen/i,
+  },
+  {
+    name: "image present but missing mimeType",
+    body: { imageBase64: "data:image/jpeg;base64,SGVsbG8=" },
+    errorMatch: /formato de imagen no soportado/i,
+  },
+  {
+    name: "empty mimeType",
+    body: { imageBase64: "data:image/jpeg;base64,SGVsbG8=", mimeType: "" },
+    errorMatch: /formato de imagen no soportado/i,
+  },
   {
     name: "disallowed mimeType image/gif",
     body: { imageBase64: "data:image/gif;base64,SGVsbG8=", mimeType: "image/gif" },
+    errorMatch: /formato de imagen no soportado/i,
   },
   {
     name: "disallowed mimeType application/pdf",
     body: { imageBase64: "data:application/pdf;base64,SGVsbG8=", mimeType: "application/pdf" },
+    errorMatch: /formato de imagen no soportado/i,
+  },
+  {
+    name: "data URL with an empty base64 payload",
+    body: { imageBase64: "data:image/jpeg;base64,", mimeType: "image/jpeg" },
+    errorMatch: /está vacía/i,
+  },
+  {
+    name: "base64 with characters outside the alphabet",
+    body: { imageBase64: "data:image/jpeg;base64,SGVs*bG8=", mimeType: "image/jpeg" },
+    errorMatch: /base64 válido/i,
+  },
+  {
+    name: "base64 whose length is not a multiple of 4",
+    body: { imageBase64: "data:image/jpeg;base64,SGVsbG8", mimeType: "image/jpeg" },
+    errorMatch: /base64 válido/i,
+  },
+  {
+    name: "raw payload that is not base64 at all",
+    body: { imageBase64: "esto no es base64", mimeType: "image/jpeg" },
+    errorMatch: /base64 válido/i,
+  },
+  {
+    name: "data URL MIME image/png against a declared image/jpeg",
+    body: { imageBase64: "data:image/png;base64,SGVsbG8=", mimeType: "image/jpeg" },
+    errorMatch: /no coincide con el contenido/i,
+  },
+  {
+    name: "data URL MIME image/jpeg against a declared image/webp",
+    body: { imageBase64: "data:image/jpeg;base64,SGVsbG8=", mimeType: "image/webp" },
+    errorMatch: /no coincide con el contenido/i,
   },
 ];
 
 test("rejects invalid requests with 400 and never calls Gemini", async (t) => {
-  for (const { name, body } of REJECTED_REQUESTS) {
+  for (const { name, body, errorMatch } of REJECTED_REQUESTS) {
     await t.test(name, async (st) => {
       const spy = st.mock.method(geminiClient, "generateContent");
 
@@ -55,6 +109,7 @@ test("rejects invalid requests with 400 and never calls Gemini", async (t) => {
 
       assert.equal(res.status, 400);
       assert.equal(typeof data.error, "string");
+      assert.match(data.error, errorMatch);
       assert.equal(spy.mock.callCount(), 0);
     });
   }
